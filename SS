@@ -1,22 +1,5 @@
 #!/bin/bash
 
-# 检查是否安装了 Git
-if ! command -v git &> /dev/null; then
-    echo "Git 未安装，正在安装 Git..."
-    
-    # 检测操作系统类型
-    if [ -f /etc/redhat-release ]; then
-        # CentOS 系统
-        sudo yum -y install git
-    elif [ -f /etc/lsb-release ]; then
-        # Ubuntu/Debian 系统
-        sudo apt-get update && sudo apt-get -y install git
-    else
-        echo "未检测到已知的 Linux 发行版，无法安装 Git。"
-        exit 1
-    fi
-fi
-
 # 下载 Shadowsocks 一键搭建脚本
 echo "下载 Shadowsocks 一键搭建脚本..."
 git clone -b master https://github.com/flyzy2005/ss-fly
