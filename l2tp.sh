@@ -28,8 +28,6 @@ YOUR_IPSEC_PSK='1'
 YOUR_USERNAME='1'
 YOUR_PASSWORD='1'
 
-
-
 # Important notes:   https://git.io/vpnnotes
 # Setup VPN clients: https://git.io/vpnclients
 # IKEv2 guide:       https://git.io/ikev2
