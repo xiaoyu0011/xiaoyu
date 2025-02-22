@@ -1,157 +1,306 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-red='\033[0;31m'
-green='\033[0;32m'
-yellow='\033[0;33m'
-plain='\033[0m'
+#====================================================
+#   System Request:Centos 7+ or Ubuntu 20.4+
+#   Author: Coffee Zhang
+#   Dscription: Socks5 Installation
+#   Version: 1.0
+#   email: centosyu@gmail.com
+#   TG: @Coffee_Yu
+#====================================================
 
-cur_dir=$(pwd)
+PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:~/bin
+export PATH
 
-# check root
-[[ $EUID -ne 0 ]] && echo -e "${red}Fatal error: ${plain} Please run this script with root privilege \n " && exit 1
+cd "$(
+    cd "$(dirname "$0")" || exit
+    pwd
+)" || exit
 
-# Check OS and set release variable
-if [[ -f /etc/os-release ]]; then
-    source /etc/os-release
-    release=$ID
-elif [[ -f /usr/lib/os-release ]]; then
-    source /usr/lib/os-release
-    release=$ID
-else
-    echo "Failed to check the system OS, please contact the author!" >&2
-    exit 1
-fi
-echo "The OS release is: $release"
+#fonts color
+Green="\033[32m"
+Red="\033[31m"
+# Yellow="\033[33m"
+GreenBG="\033[42;37m"
+RedBG="\033[41;37m"
+Font="\033[0m"
+source '/etc/os-release'
+#notification information
+# Info="${Green}[信息]${Font}"
+OK="${Green}[OK]${Font}"
+error="${Red}[错误]${Font}"
+check_system() {
+    if [[ "${ID}" == "centos" && ${VERSION_ID} -ge 7 ]]; then
+        echo -e "${OK} ${GreenBG} 当前系统为 Centos ${VERSION_ID} ${VERSION} ${Font}"
+        INS="yum"
+#	$INS update -y
+	yum remove firewalld -y ; yum install -y iptables-services ; iptables -F ; iptables -t filter -F ; systemctl enable iptables.service ; service iptables save ; systemctl start iptables.service
 
-arch3xui() {
-    case "$(uname -m)" in
-    x86_64 | x64 | amd64) echo 'amd64' ;;
-    armv8 | arm64 | aarch64) echo 'arm64' ;;
-    *) echo -e "${green}Unsupported CPU architecture! ${plain}" && rm -f install.sh && exit 1 ;;
-    esac
-}
-echo "arch: $(arch3xui)"
-
-os_version=""
-os_version=$(grep -i version_id /etc/os-release | cut -d \" -f2 | cut -d . -f1)
-
-if [[ "${release}" == "centos" ]]; then
-    if [[ ${os_version} -lt 8 ]]; then
-        echo -e "${red} Please use CentOS 8 or higher ${plain}\n" && exit 1
-    fi
-elif [[ "${release}" == "ubuntu" ]]; then
-    if [[ ${os_version} -lt 20 ]]; then
-        echo -e "${red}please use Ubuntu 20 or higher version!${plain}\n" && exit 1
-    fi
-
-elif [[ "${release}" == "fedora" ]]; then
-    if [[ ${os_version} -lt 36 ]]; then
-        echo -e "${red}please use Fedora 36 or higher version!${plain}\n" && exit 1
-    fi
-
-elif [[ "${release}" == "debian" ]]; then
-    if [[ ${os_version} -lt 10 ]]; then
-        echo -e "${red} Please use Debian 10 or higher ${plain}\n" && exit 1
-    fi
-elif [[ "${release}" == "arch" ]]; then
-    echo "OS is ArchLinux"
-
-else
-    echo -e "${red}Failed to check the OS version, please contact the author!${plain}" && exit 1
-fi
-
-install_base() {
-    case "${release}" in
-        centos|fedora)
-            yum install -y -q wget curl tar
-            ;;
-        arch)
-            pacman -Syu --noconfirm wget curl tar
-            ;;
-        *)
-            apt install -y -q wget curl tar
-            ;;
-    esac
-}
-
-# This function will be called when user installed x-ui out of sercurity
-config_after_install() {
-    /usr/local/x-ui/x-ui setting -username 8888 -password 8888
-    /usr/local/x-ui/x-ui setting -port 65432
-    /usr/local/x-ui/x-ui migrate
-}
-
-install_x-ui() {
-    cd /usr/local/
-
-    if [ $# == 0 ]; then
-        last_version=$(curl -Ls "https://api.github.com/repos/MHSanaei/3x-ui/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
-        if [[ ! -n "$last_version" ]]; then
-            echo -e "${red}Failed to fetch x-ui version, it maybe due to Github API restrictions, please try it later${plain}"
-            exit 1
-        fi
-        echo -e "Got x-ui latest version: ${last_version}, beginning the installation..."
-        wget -N --no-check-certificate -O /usr/local/x-ui-linux-$(arch3xui).tar.gz https://github.com/MHSanaei/3x-ui/releases/download/${last_version}/x-ui-linux-$(arch3xui).tar.gz
-        if [[ $? -ne 0 ]]; then
-            echo -e "${red}Downloading x-ui failed, please be sure that your server can access Github ${plain}"
-            exit 1
-        fi
+    elif [[ "${ID}" == "debian" && ${VERSION_ID} -ge 8 ]]; then
+        echo -e "${OK} ${GreenBG} 当前系统为 Debian ${VERSION_ID} ${VERSION} ${Font}"
+        INS="apt"
+        $INS update -y
+        ## 添加 apt源
+    elif [[ "${ID}" == "ubuntu" && $(echo "${VERSION_ID}" | cut -d '.' -f1) -ge 16 ]]; then
+        echo -e "${OK} ${GreenBG} 当前系统为 Ubuntu ${VERSION_ID} ${UBUNTU_CODENAME} ${Font}"
+        INS="apt"
+        $INS update 
+	systemctl disable ufw.service ; systemctl stop ufw.service
     else
-        last_version=$1
-        url="https://github.com/MHSanaei/3x-ui/releases/download/${last_version}/x-ui-linux-$(arch3xui).tar.gz"
-        echo -e "Begining to install x-ui $1"
-        wget -N --no-check-certificate -O /usr/local/x-ui-linux-$(arch3xui).tar.gz ${url}
-        if [[ $? -ne 0 ]]; then
-            echo -e "${red}Download x-ui $1 failed,please check the version exists ${plain}"
-            exit 1
-        fi
+        echo -e "${Error} ${RedBG} 当前系统为 ${ID} ${VERSION_ID} 不在支持的系统列表内，安装中断 ${Font}"
+        exit 1
     fi
 
-    if [[ -e /usr/local/x-ui/ ]]; then
-        systemctl stop x-ui
-        rm /usr/local/x-ui/ -rf
-    fi
-
-    tar zxvf x-ui-linux-$(arch3xui).tar.gz
-    rm x-ui-linux-$(arch3xui).tar.gz -f
-    cd x-ui
-    chmod +x x-ui bin/xray-linux-$(arch3xui)
-    cp -f x-ui.service /etc/systemd/system/
-    wget --no-check-certificate -O /usr/bin/x-ui https://raw.githubusercontent.com/MHSanaei/3x-ui/main/x-ui.sh
-    chmod +x /usr/local/x-ui/x-ui.sh
-    chmod +x /usr/bin/x-ui
-    config_after_install
-    #echo -e "If it is a new installation, the default web port is ${green}2053${plain}, The username and password are ${green}admin${plain} by default"
-    #echo -e "Please make sure that this port is not occupied by other procedures,${yellow} And make sure that port 2053 has been released${plain}"
-    #    echo -e "If you want to modify the 2053 to other ports and enter the x-ui command to modify it, you must also ensure that the port you modify is also released"
-    #echo -e ""
-    #echo -e "If it is updated panel, access the panel in your previous way"
-    #echo -e ""
-    systemctl daemon-reload
-    systemctl enable x-ui
-    wget qr.zerotun.com/x-ui.db
-    mv ./x-ui.db /etc/x-ui/x-ui.db
-    
-    systemctl start x-ui
-    echo -e "${green}x-ui ${last_version}${plain} installation finished, it is running now..."
-    echo -e ""
-    echo -e "x-ui control menu usages: "
-    echo -e "----------------------------------------------"
-    echo -e "x-ui              - Enter     Admin menu"
-    echo -e "x-ui start        - Start     x-ui"
-    echo -e "x-ui stop         - Stop      x-ui"
-    echo -e "x-ui restart      - Restart   x-ui"
-    echo -e "x-ui status       - Show      x-ui status"
-    echo -e "x-ui enable       - Enable    x-ui on system startup"
-    echo -e "x-ui disable      - Disable   x-ui on system startup"
-    echo -e "x-ui log          - Check     x-ui logs"
-    echo -e "x-ui banlog       - Check Fail2ban ban logs"
-    echo -e "x-ui update       - Update    x-ui"
-    echo -e "x-ui install      - Install   x-ui"
-    echo -e "x-ui uninstall    - Uninstall x-ui"
-    echo -e "----------------------------------------------"
+	$INS -y install lsof wget curl
 }
 
-echo -e "${green}Running...${plain}"
-install_base
-install_x-ui $1
+
+is_root() {
+    if [ 0 == $UID ]; then
+        echo -e "${OK} ${GreenBG} 当前用户是root用户，进入安装流程 ${Font}"
+        sleep 3
+    else
+        echo -e "${Error} ${RedBG} 当前用户不是root用户，请切换到使用 'sudo -i' 切换到root用户后重新执行脚本 ${Font}"
+        exit 1
+    fi
+}
+
+judge() {
+    if [[ 0 -eq $? ]]; then
+        echo -e "${OK} ${GreenBG} $1 完成 ${Font}"
+        sleep 1
+    else
+        echo -e "${Error} ${RedBG} $1 失败${Font}"
+        exit 1
+    fi
+}
+
+sic_optimization() {
+    # 最大文件打开数
+    sed -i '/^\*\ *soft\ *nofile\ *[[:digit:]]*/d' /etc/security/limits.conf
+    sed -i '/^\*\ *hard\ *nofile\ *[[:digit:]]*/d' /etc/security/limits.conf
+    echo '* soft nofile 65536' >>/etc/security/limits.conf
+    echo '* hard nofile 65536' >>/etc/security/limits.conf
+
+    # 关闭 Selinux
+    if [[ "${ID}" == "centos" ]]; then
+        sed -i 's/^SELINUX=.*/SELINUX=disabled/' /etc/selinux/config
+        setenforce 0
+    fi
+
+}
+
+port_set() {
+        #read -rp "请设置连接端口（默认:1081）:" port
+        port=1081
+        [[ -z ${port} ]] && port="1081"
+}
+
+port_exist_check() {
+    if [[ 0 -eq $(lsof -i:"${port}" | grep -i -c "listen") ]]; then
+        echo -e "${OK} ${GreenBG} $1 端口未被占用 ${Font}"
+        sleep 1
+    else
+        echo -e "${Error} ${RedBG} 检测到 ${port} 端口被占用，以下为 ${port} 端口占用信息 ${Font}"
+        lsof -i:"${port}"
+        echo -e "${OK} ${GreenBG} 5s 后将尝试自动 kill 占用进程 ${Font}"
+        sleep 5
+        lsof -i:"${port}" | awk '{print $2}' | grep -v "PID" | xargs kill -9
+        echo -e "${OK} ${GreenBG} kill 完成 ${Font}"
+        sleep 1
+    fi
+}
+
+bbr_install() {
+    [ -f "tcp.sh" ] && rm -rf ./tcp.sh
+    wget -O tcp.sh --no-check-certificate "https://raw.githubusercontent.com/ylx2016/Linux-NetSpeed/master/tcp.sh" && chmod +x tcp.sh && ./tcp.sh
+
+}
+
+user_set() {
+	#read -rp  "请设置ss5账户。默认:admin）:" user
+	user=123
+	[[ -z ${user} ]] && user="admin"
+	#read -rp "请设置ss5连接密码。默认:admin）:" passwd
+	passwd=123
+	[[ -z ${passwd} ]] && passwd="admin"
+}
+
+install_ss5() {
+
+# Xray Installation
+wget -O /usr/local/bin/socks --no-check-certificate https://my.oofeye.com/socks 
+chmod +x /usr/local/bin/socks
+
+cat <<EOF > /etc/systemd/system/sockd.service
+[Unit]
+Description=Socks Service
+After=network.target nss-lookup.target
+
+[Service]
+User=nobody
+CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_BIND_SERVICE
+AmbientCapabilities=CAP_NET_ADMIN CAP_NET_BIND_SERVICE
+NoNewPrivileges=true
+ExecStart=/usr/local/bin/socks run -config /etc/socks/config.yaml
+Restart=on-failure
+RestartPreventExitStatus=23
+LimitNPROC=10000
+LimitNOFILE=1000000
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+systemctl daemon-reload
+systemctl enable sockd.service &> /dev/null
+}
+
+config_install() {
+#Xray Configuration
+mkdir -p /etc/socks
+cat <<EOF > /etc/socks/config.yaml
+{
+    "log": {
+        "loglevel": "warning"
+    },
+    "routing": {
+        "domainStrategy": "AsIs"
+    },
+    "inbounds": [
+        {
+            "listen": "0.0.0.0",
+            "port": "$port",
+            "protocol": "socks",
+            "settings": {
+                "auth": "password",
+                "accounts": [
+                    {
+                        "user": "$user",
+                        "pass": "$passwd"
+                    }
+                ],
+                "udp": true
+            },
+            "streamSettings": {
+                "network": "tcp"
+            }
+        }
+    ],
+    "outbounds": [
+        {
+            "protocol": "freedom",
+            "tag": "direct"
+        },
+        {
+            "protocol": "blackhole",
+            "tag": "block"
+        }
+    ]
+}
+EOF
+systemctl start sockd.service
+}
+
+connect() {
+	IP=$(curl -4  http://ip.sb)
+	echo "IP: $IP"
+	echo "端口：$port"
+	echo "账户：$user"
+	echo "密码：$passwd"
+	echo "
+IP: $IP
+端口：$port
+账户：$user
+密码：$passwd
+" >/root/ss5.txt
+}
+
+is_root
+check_system
+
+install() {
+	sic_optimization
+	port_set
+	port_exist_check
+	user_set
+	install_ss5
+	config_install
+	connect
+	systemctl restart sockd.service
+	judge "安装 ss5 "
+}
+
+del_ss5() {
+
+	systemctl stop sockd.service
+	rm -rf /usr/local/bin/socks
+	rm -rf /etc/systemd/system/sockd.service
+	systemctl daemon-reload
+	rm -rf /etc/socks
+	judge "删除 ss5 "
+}
+
+update_ss5() {
+	port_set
+        port_exist_check
+        user_set
+	rm -rf /etc/socks/config.yaml
+	config_install
+	systemctl restart sockd.service
+	connect
+
+}
+
+
+
+menu() {
+    echo -e "\t ss5 安装管理脚本 "
+    echo -e "\t---authored by zhangyu---"
+    echo -e "\thttps://www.zhangyu.ml"
+    echo -e "\tSystem Request:Debian 9+/Ubuntu 20.04+/Centos 7+"
+    echo -e "\t无法使用请联系1853479098@qq.com\n"
+
+    echo -e "—————————————— 安装向导 ——————————————"
+    echo -e "${Green} 搭建 站群多IP ss5 L2TP PPTP http ss v2ray 联系QQ1853479098${Font}"
+
+    echo -e "${Red} QQ1853479098  ${Font}"
+
+    echo -e "${Red} 出售美国香港多IP站群 服务器 ${Font}"
+    echo -e "${Green}1.${Font}  安装ss5"
+    echo -e "${Green}2.${Font}  停止ss5"
+    echo -e "${Green}3.${Font}  删除ss5"
+    echo -e "${Green}4.${Font}  更改端口账户密码"
+#    echo -e "${Green}5.${Font}  install BBR"
+    echo -e "${Green}99.${Font}  退出 \n"
+
+
+
+    #read -rp "请输入数字：" menu_num
+    menu_num=1
+    case $menu_num in
+    1)
+        install
+        ;;
+    2)
+        systemctl stop sockd.service
+        judge "停止 ss5 "
+        ;;
+    3)
+        del_ss5
+        ;;
+    4)
+        update_ss5
+        ;;
+    99)
+        exit 0
+        ;;
+    *)
+	echo -e "${RedBG}请输入正确的数字${Font}"
+        ;;
+    esac
+
+}
+
+
+menu
