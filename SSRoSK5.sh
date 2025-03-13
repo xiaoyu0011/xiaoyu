@@ -90,7 +90,6 @@ echo '{
     "method":"chacha20-ietf-poly1305"
 }' > /etc/shadowsocks-libev/config.json;
 
-systemctl restart shadowsocks-libev;
 
 #!/usr/bin/env bash
 
