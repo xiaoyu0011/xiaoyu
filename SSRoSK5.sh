@@ -83,7 +83,7 @@ systemctl start shadowsocks-libev;
 echo '{
     "server":["::0", "0.0.0.0"],
     "mode":"tcp_and_udp",
-    "server_port":1080,
+    "server_port":1081,
     "local_port":10810,
     "password":"xiaoyu123",
     "timeout":86400,
