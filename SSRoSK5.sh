@@ -91,19 +91,8 @@ echo '{
 }' > /etc/shadowsocks-libev/config.json;
 
 
-#!/usr/bin/env bash
 
-#====================================================
-#   System Request:Centos 7+ or Ubuntu 20.4+
-#   Author: Coffee Zhang
-#   Dscription: Socks5 Installation
-#   Version: 1.0
-#   email: centosyu@gmail.com
-#   TG: @Coffee_Yu
-#====================================================
 
-PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:~/bin
-export PATH
 
 cd "$(
     cd "$(dirname "$0")" || exit
